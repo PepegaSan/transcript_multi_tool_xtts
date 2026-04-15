@@ -1,0 +1,9 @@
+customtkinter
+tkinterdnd2
+openai-whisper
+torch
+deep-translator
+TTS
+transformers==4.39.3
+numpy==1.22.0
+huggingface_hub>=0.20.0

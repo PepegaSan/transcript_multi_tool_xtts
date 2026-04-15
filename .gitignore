@@ -1,0 +1,11 @@
+.venv/
+.venv_py*/
+__pycache__/
+*.py[cod]
+*.pyc
+.python_for_start_gui.txt
+tts_profiles/**/*.wav
+*.mp3
+*.wav
+openvoice_v2_hf/
+ab_tts_results/

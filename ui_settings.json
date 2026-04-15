@@ -1,0 +1,7 @@
+{
+  "tts_engine": "xtts_v2",
+  "tts_runtime_mode": "python_path",
+  "tts_conda_env": "",
+  "tts_python_path": "",
+  "tts_enabled": true
+}

@@ -959,7 +959,6 @@ class TranskriptionApp(DnD_CTk):
         engine_block.pack(fill='x', padx=10, pady=(0, 10))
         row_eng = ctk.CTkFrame(engine_block, fg_color='transparent')
         row_eng.pack(fill='x')
-        ctk.CTkLabel(row_eng, text=self._tr("Voice engine:", "Stimmen-Engine:")).pack(side='left', padx=(0, 8))
         self.tts_engine_var = ctk.StringVar(value=TTS_ENGINE_XTTS_V2)
         try:
             self.ui_settings["tts_engine"] = TTS_ENGINE_XTTS_V2
@@ -970,12 +969,13 @@ class TranskriptionApp(DnD_CTk):
         ctk.CTkLabel(
             row_eng,
             text=self._tr(
-                "Coqui XTTS v2 (multilingual, e.g. DE/EN)",
-                "Coqui XTTS v2 (mehrsprachig, z.B. DE/EN)",
+                "Voice engine: Coqui XTTS v2 only (fixed in this build; multilingual, e.g. DE/EN). No OpenVoice, no HF model download here.",
+                "Stimmen-Engine: Nur Coqui XTTS v2 (in dieser fest eingestellt; mehrsprachig, z.B. DE/EN). Kein OpenVoice, kein HF-Modell-Download.",
             ),
             text_color="gray80",
             anchor="w",
-        ).pack(side='left', padx=(0, 8))
+            justify="left",
+        ).pack(side='left', fill='x', expand=True)
         self.lbl_tts_engine_hint = ctk.CTkLabel(
             engine_block,
             text="",
@@ -1431,13 +1431,13 @@ class TranskriptionApp(DnD_CTk):
         return os.path.abspath(cand)
 
     def _update_tts_engine_hint(self) -> None:
-        """Short hint for XTTS-only Tab 5."""
+        """Short hint for XTTS-only Tab 5 (language selection lives below)."""
         if not hasattr(self, "lbl_tts_engine_hint"):
             return
         self.lbl_tts_engine_hint.configure(
             text=self._tr(
-                "This build uses Coqui XTTS v2 only. Pick profile language (e.g. de) for correct pronunciation.",
-                "Diese Version nutzt nur Coqui XTTS v2. Profil-Sprache (z.B. de) fuer korrekte Aussprache waehlen.",
+                "Tip: set the profile / tab language (e.g. de) to match your text so XTTS uses the right language code.",
+                "Tipp: Profil- bzw. Tab-Sprache (z.B. de) passend zum Text waehlen, damit XTTS den richtigen Sprachcode nutzt.",
             ),
             text_color="gray70",
         )

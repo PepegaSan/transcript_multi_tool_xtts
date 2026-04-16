@@ -1,3 +1,6 @@
+# Windows: prefer install.bat (Python 3.10/3.11, then Coqui TTS + pinned transformers).
+# If you install manually: default `pip install torch` is often CPU-only; for NVIDIA GPU
+# use the wheel index from https://pytorch.org/get-started/locally/ matching your CUDA version.
 customtkinter
 tkinterdnd2
 openai-whisper
@@ -5,5 +8,4 @@ torch
 deep-translator
 TTS
 transformers==4.39.3
-numpy==1.22.0
 huggingface_hub>=0.20.0

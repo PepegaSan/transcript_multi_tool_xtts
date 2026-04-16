@@ -89,7 +89,7 @@ TTS_RESULT_PRESETS = {
         "description": "Expressive pacing with cleaner voice and controlled pauses."
     }
 }
-# Tab 5: persisted in ui_settings as "tts_engine". This repo build is XTTS v2 only (no OpenVoice).
+# Tab 5: persisted in ui_settings as "tts_engine". This repo build is XTTS v2 only.
 TTS_ENGINE_XTTS_V2 = "xtts_v2"
 TTS_ENGINES = (TTS_ENGINE_XTTS_V2,)
 DEFAULT_FILTER_PRESETS = {
@@ -106,7 +106,6 @@ class DnD_CTk(ctk.CTk, TkinterDnD.DnDWrapper):
 class TranskriptionApp(DnD_CTk):
     def __init__(self):
         super().__init__()
-        self.title("Smart Transcript & DaVinci Cutter (XTTS v2)")
         self.geometry("950x800")
         
         self.video_path = ""
@@ -144,6 +143,12 @@ class TranskriptionApp(DnD_CTk):
         if saved_ui_lang not in {"EN", "DE"}:
             saved_ui_lang = "EN"
         self.ui_lang_var = ctk.StringVar(value=saved_ui_lang)
+        self.title(
+            self._tr(
+                "Smart Transcript & DaVinci Cutter (XTTS v2)",
+                "Smart Transkript & DaVinci Cutter (XTTS v2)",
+            )
+        )
 
         self.top_controls = ctk.CTkFrame(self, fg_color="transparent")
         self.top_controls.pack(fill='x', padx=20, pady=(10, 0))
@@ -159,11 +164,11 @@ class TranskriptionApp(DnD_CTk):
         self.tabs = ctk.CTkTabview(self)
         self.tabs.pack(fill='both', expand=True, padx=20, pady=15)
         
-        self.tab_source = self.tabs.add('1. Source & Whisper')
-        self.tab_filter = self.tabs.add('2. Filter & Replace')
-        self.tab_export = self.tabs.add('3. Editor & Text Export')
-        self.tab_davinci = self.tabs.add('4. DaVinci Resolve Export')
-        self.tab_tts = self.tabs.add('5. Voice Export (TTS)')
+        self.tab_source = self.tabs.add(self._tr("1. Source & Whisper", "1. Quelle & Whisper"))
+        self.tab_filter = self.tabs.add(self._tr("2. Filter & Replace", "2. Filter & Ersetzen"))
+        self.tab_export = self.tabs.add(self._tr("3. Editor & Text Export", "3. Editor & Textexport"))
+        self.tab_davinci = self.tabs.add(self._tr("4. DaVinci Resolve Export", "4. DaVinci-Resolve-Export"))
+        self.tab_tts = self.tabs.add(self._tr("5. Voice Export (TTS)", "5. Stimmenexport (TTS)"))
 
         self.build_source_tab()
         self.build_filter_tab()
@@ -242,7 +247,38 @@ class TranskriptionApp(DnD_CTk):
         self._save_ui_settings()
         self.apply_ui_language()
 
+    def _apply_tab_titles(self):
+        pairs = [
+            ("1. Source & Whisper", "1. Quelle & Whisper"),
+            ("2. Filter & Replace", "2. Filter & Ersetzen"),
+            ("3. Editor & Text Export", "3. Editor & Textexport"),
+            ("4. DaVinci Resolve Export", "4. DaVinci-Resolve-Export"),
+            ("5. Voice Export (TTS)", "5. Stimmenexport (TTS)"),
+        ]
+        try:
+            tv = self.tabs
+            names = list(tv._name_list)
+        except Exception:
+            return
+        for i, (en, de) in enumerate(pairs):
+            want = self._tr(en, de)
+            if i >= len(names):
+                break
+            cur = names[i]
+            if cur == want:
+                continue
+            try:
+                tv.rename(cur, want)
+            except Exception:
+                continue
+            try:
+                names = list(tv._name_list)
+            except Exception:
+                break
+
     def apply_ui_language(self):
+        self.title(self._tr("Smart Transcript & DaVinci Cutter (XTTS v2)", "Smart Transkript & DaVinci Cutter (XTTS v2)"))
+        self._apply_tab_titles()
         if hasattr(self, "drop_zone"):
             self.drop_zone.configure(text=self._tr("📁 Drop video here\n(Drag & Drop)", "📁 Video hier ablegen\n(Drag & Drop)"))
         if hasattr(self, "chk_cut"):
@@ -259,10 +295,121 @@ class TranskriptionApp(DnD_CTk):
                     "Wenn du DaVinci/FFmpeg Export nutzen willst: eingeschaltet lassen. (AUS = nur Transkript, keine Cut/Beep-Bereiche.)"
                 )
             )
+        if hasattr(self, "lbl_whisper_note"):
+            self.lbl_whisper_note.configure(
+                text=self._tr(
+                    "Whisper note: bigger model = better text, but slower.",
+                    "Hinweis: groesseres Whisper-Modell = besserer Text, aber langsamer."
+                )
+            )
+        if hasattr(self, "lbl_device"):
+            self.lbl_device.configure(text=self._tr("Device:", "Geraet:"))
+        if hasattr(self, "lbl_chunk_words"):
+            self.lbl_chunk_words.configure(text=self._tr("Chunk size (words):", "Chunk-Groesse (Woerter):"))
+        if hasattr(self, "lbl_chunk_chars"):
+            self.lbl_chunk_chars.configure(text=self._tr("Max chars per block:", "Max. Zeichen pro Block:"))
+        if hasattr(self, "lbl_chunk_hint"):
+            self.lbl_chunk_hint.configure(
+                text=self._tr(
+                    "Set 0 to disable a limit. Example: chars=0, words=500 -> word limit only.",
+                    "0 = kein Limit. Beispiel: Zeichen=0, Woerter=500 -> nur Wortlimit."
+                )
+            )
+        if hasattr(self, "chk_auto_punct"):
+            self.chk_auto_punct.configure(
+                text=self._tr("Auto punctuation fallback", "Automatische Satzzeichen (Fallback)")
+            )
+        if hasattr(self, "lbl_auto_punct_hint"):
+            self.lbl_auto_punct_hint.configure(
+                text=self._tr(
+                    "If text has little punctuation, add basic punctuation automatically.",
+                    "Wenn kaum Satzzeichen vorkommen, werden einfache Zeichen ergaenzt."
+                )
+            )
+        if hasattr(self, "chk_auto_chunk"):
+            self.chk_auto_chunk.configure(
+                text=self._tr(
+                    "Split transcript into sections after transcription (off = plain text only)",
+                    "Nach Transkription in Blocke teilen (aus = nur Fliesstext)"
+                )
+            )
+        if hasattr(self, "lbl_audio_preprocess"):
+            self.lbl_audio_preprocess.configure(text=self._tr("Audio preprocessing:", "Audio-Vorverarbeitung:"))
+        if hasattr(self, "lbl_audio_preprocess_hint"):
+            self.lbl_audio_preprocess_hint.configure(
+                text=self._tr(
+                    "voice_clean: balanced, speech_boost: stronger voice focus, music_heavy_cleanup: aggressive bg-music reduction.",
+                    "voice_clean: ausgewogen, speech_boost: staerkere Sprachbetonung, music_heavy_cleanup: aggressiver bei Hintergrundmusik."
+                )
+            )
+        if hasattr(self, "btn_transcribe"):
+            self.btn_transcribe.configure(text=self._tr("▶ Start transcription", "▶ Transkription starten"))
+        if hasattr(self, "btn_stop_transcribe"):
+            self.btn_stop_transcribe.configure(text=self._tr("Stop", "Stopp"))
         if hasattr(self, "lbl_whisper_model"):
-            self.lbl_whisper_model.configure(text=self._tr("Whisper model:", "Whisper Modell:"))
+            self.lbl_whisper_model.configure(text=self._tr("Whisper model:", "Whisper-Modell:"))
         if hasattr(self, "lbl_source_language"):
             self.lbl_source_language.configure(text=self._tr("Language:", "Sprache:"))
+        if hasattr(self, "lbl_filter_preset"):
+            self.lbl_filter_preset.configure(text=self._tr("Filter preset:", "Filter-Preset:"))
+        if hasattr(self, "btn_apply_preset"):
+            self.btn_apply_preset.configure(text=self._tr("Apply preset", "Preset anwenden"))
+        if hasattr(self, "btn_save_preset"):
+            self.btn_save_preset.configure(text=self._tr("Save current as preset", "Aktuelles als Preset speichern"))
+        if hasattr(self, "btn_delete_preset"):
+            self.btn_delete_preset.configure(text=self._tr("Delete preset", "Preset loeschen"))
+        if hasattr(self, "lbl_filter_delete"):
+            self.lbl_filter_delete.configure(
+                text=self._tr("Delete words/phrases (comma-separated):", "Woerter/Phrasen loeschen (Komma-getrennt):")
+            )
+        if hasattr(self, "lbl_filter_replace"):
+            self.lbl_filter_replace.configure(
+                text=self._tr("Replace (format old:new, comma-separated):", "Ersetzen (Format alt:neu, Komma-getrennt):")
+            )
+        if hasattr(self, "chk_cleanup_text"):
+            self.chk_cleanup_text.configure(
+                text=self._tr(
+                    "Auto-clean punctuation and spacing after filtering",
+                    "Nach Filter: Zeichensetzung und Abstaende bereinigen"
+                )
+            )
+        if hasattr(self, "btn_apply_filter"):
+            self.btn_apply_filter.configure(text=self._tr("Apply filter", "Filter anwenden"))
+        if hasattr(self, "btn_undo_last"):
+            self.btn_undo_last.configure(text=self._tr("Undo last change", "Letzte Aenderung rueckgaengig"))
+        if hasattr(self, "btn_redo_last"):
+            self.btn_redo_last.configure(text=self._tr("Redo", "Wiederholen"))
+        if hasattr(self, "btn_reset_all"):
+            self.btn_reset_all.configure(text=self._tr("Reset all changes", "Alle Aenderungen zuruecksetzen"))
+        if hasattr(self, "lbl_translate_heading"):
+            self.lbl_translate_heading.configure(
+                text=self._tr("Translate current editor text:", "Aktuellen Editor-Text uebersetzen:")
+            )
+        if hasattr(self, "lbl_translate_action"):
+            self.lbl_translate_action.configure(text=self._tr("Action:", "Aktion:"))
+        if hasattr(self, "btn_translate_swap"):
+            self.btn_translate_swap.configure(text=self._tr("Swap", "Tauschen"))
+        if hasattr(self, "btn_translate_run"):
+            self.btn_translate_run.configure(text=self._tr("Run", "Start"))
+        if hasattr(self, "lbl_translate_hint"):
+            self.lbl_translate_hint.configure(
+                text=self._tr(
+                    "Uses Google Translate backend. Keeps block style.",
+                    "Nutzt Google Translate. Blockformat bleibt erhalten."
+                )
+            )
+        if hasattr(self, "btn_import_text"):
+            self.btn_import_text.configure(text=self._tr("Import TXT", "TXT importieren"))
+        if hasattr(self, "btn_clear_editor"):
+            self.btn_clear_editor.configure(text=self._tr("Clear Editor", "Editor leeren"))
+        if hasattr(self, "btn_export_clean"):
+            self.btn_export_clean.configure(text=self._tr("Save TXT (No Headers)", "TXT speichern (ohne Koepfe)"))
+        if hasattr(self, "btn_export"):
+            self.btn_export.configure(text=self._tr("Save TXT", "TXT speichern"))
+        if hasattr(self, "btn_copy_block"):
+            self.btn_copy_block.configure(
+                text=self._tr("Copy Block (Cursor/Next)  C", "Block kopieren (Cursor/Naechster)  C")
+            )
         if hasattr(self, "lbl_davinci_desc"):
             self.lbl_davinci_desc.configure(
                 text=self._tr(
@@ -270,14 +417,190 @@ class TranskriptionApp(DnD_CTk):
                     "Exportiert das Video ohne die in Tab 2 geloeschten Woerter direkt nach DaVinci Resolve."
                 )
             )
+        if hasattr(self, "lbl_davinci_file_hint"):
+            self.lbl_davinci_file_hint.configure(
+                text=self._tr(
+                    "Uses the same file as Tab 1 (drag & drop). Temp WAV is not used in Resolve.",
+                    "Gleiche Datei wie Tab 1 (Drag & Drop). Temp-WAV wird in Resolve nicht genutzt."
+                )
+            )
+        if hasattr(self, "lbl_engine"):
+            self.lbl_engine.configure(text=self._tr("Engine:", "Engine:"))
+        if hasattr(self, "lbl_export_action"):
+            self.lbl_export_action.configure(text=self._tr("Action:", "Aktion:"))
+        if hasattr(self, "lbl_tone_freq"):
+            self.lbl_tone_freq.configure(text=self._tr("Tone frequency (Hz):", "Ton-Frequenz (Hz):"))
+        if hasattr(self, "lbl_tone_freq_hint"):
+            self.lbl_tone_freq_hint.configure(
+                text=self._tr(
+                    "Lower Hz is deeper, higher Hz is sharper. 900 Hz is a good middle value.",
+                    "Niedrigere Hz = tiefer, hoehere Hz = schaerfer. 900 Hz ist ein guter Mittelwert."
+                )
+            )
+        if hasattr(self, "lbl_beep_level"):
+            self.lbl_beep_level.configure(text=self._tr("Beep level:", "Beep-Lautstaerke:"))
+        if hasattr(self, "lbl_beep_hint"):
+            self.lbl_beep_hint.configure(
+                text=self._tr(
+                    "Loudness of the sine beep in replaced segments (FFmpeg → replace with tone only). 0% ≈ off.",
+                    "Lautstaerke des Sinus-Beeps in ersetzten Segmenten (nur FFmpeg „Ton ersetzen“). 0% ≈ aus."
+                )
+            )
+        if hasattr(self, "lbl_min_segment"):
+            self.lbl_min_segment.configure(text=self._tr("Min segment duration (sec):", "Min. Segmentlaenge (s):"))
+        if hasattr(self, "lbl_min_segment_hint"):
+            self.lbl_min_segment_hint.configure(
+                text=self._tr(
+                    "Shorter segments are ignored to avoid choppy edits. 0.20s is a good default.",
+                    "Kuerzere Segmente werden ignoriert (weniger Ruckeln). 0,20 s ist ein guter Standard."
+                )
+            )
+        if hasattr(self, "chk_export_srt"):
+            self.chk_export_srt.configure(
+                text=self._tr("Export subtitles (.srt) with video export", "Untertitel (.srt) beim Videoexport mit ausgeben")
+            )
+        if hasattr(self, "chk_embed_srt_ffmpeg"):
+            self.chk_embed_srt_ffmpeg.configure(
+                text=self._tr("FFmpeg: embed SRT into MP4", "FFmpeg: SRT in MP4 einbetten")
+            )
+        if hasattr(self, "chk_embed_srt_davinci"):
+            self.chk_embed_srt_davinci.configure(
+                text=self._tr("DaVinci: after render embed SRT into MP4", "DaVinci: nach Render SRT in MP4 einbetten")
+            )
+        if hasattr(self, "lbl_srt_lang"):
+            self.lbl_srt_lang.configure(text=self._tr("SRT lang:", "SRT-Sprache:"))
+        if hasattr(self, "lbl_srt_max_words"):
+            self.lbl_srt_max_words.configure(text=self._tr("Max words:", "Max. Woerter:"))
+        if hasattr(self, "chk_srt_apply_replace"):
+            self.chk_srt_apply_replace.configure(
+                text=self._tr("Apply Tab 2 replace rules to SRT", "Tab-2-Ersetzungen auf SRT anwenden")
+            )
+        if hasattr(self, "chk_davinci_timeline_only"):
+            self.chk_davinci_timeline_only.configure(
+                text=self._tr("DaVinci: create timeline only (skip render)", "DaVinci: nur Timeline anlegen (ohne Render)")
+            )
+        if hasattr(self, "lbl_davinci_api_path"):
+            self.lbl_davinci_api_path.configure(
+                text=self._tr("DaVinci API path (optional):", "DaVinci-API-Pfad (optional):"),
+            )
+        if hasattr(self, "entry_davinci_api_path"):
+            self.entry_davinci_api_path.configure(
+                placeholder_text=self._tr(
+                    "Optional — path to DaVinciResolveScript.py if not on PATH",
+                    "Optional — Pfad zu DaVinciResolveScript.py falls nicht im PATH",
+                )
+            )
+        if hasattr(self, "btn_davinci_api_browse"):
+            self.btn_davinci_api_browse.configure(
+                text=self._tr("Browse...", "Durchsuchen..."),
+            )
+        if hasattr(self, "lbl_render_preset"):
+            self.lbl_render_preset.configure(text=self._tr("Render preset:", "Render-Preset:"))
+        if hasattr(self, "btn_save_davinci_preset"):
+            self.btn_save_davinci_preset.configure(text=self._tr("Save", "Speichern"))
+        if hasattr(self, "btn_delete_davinci_preset"):
+            self.btn_delete_davinci_preset.configure(text=self._tr("Delete", "Loeschen"))
+        if hasattr(self, "lbl_davinci_preset_tip"):
+            self.lbl_davinci_preset_tip.configure(
+                text=self._tr(
+                    "Tip: Type a preset name once, click Save, then pick it from the dropdown next time.",
+                    "Tipp: Preset-Namen einmal eintragen, Speichern, dann beim naechsten Mal aus der Liste waehlen."
+                )
+            )
+        if hasattr(self, "btn_davinci"):
+            self.btn_davinci.configure(text=self._tr("Start Video Export", "Videoexport starten"))
+        if hasattr(self, "export_engine_var"):
+            eng = (self.export_engine_var.get() or "").strip().lower()
+            if hasattr(self, "lbl_engine_hint"):
+                if eng == "davinci":
+                    self.lbl_engine_hint.configure(
+                        text=self._tr(
+                            "Replace options are available with FFmpeg only.",
+                            "Ersetzen-Optionen sind nur mit FFmpeg verfuegbar."
+                        )
+                    )
+                else:
+                    self.lbl_engine_hint.configure(text="")
         if hasattr(self, "lbl_status") and self.lbl_status.cget("text").strip() in {"Ready", "Bereit"}:
             self.lbl_status.configure(text=self._tr("Ready", "Bereit"))
+        if hasattr(self, "btn_tts_check"):
+            self.btn_tts_check.configure(
+                text=self._tr("Check local TTS runtime", "Lokale TTS-Laufzeit pruefen")
+            )
+        if hasattr(self, "tts_env_entry"):
+            self.tts_env_entry.configure(
+                placeholder_text=self._tr("Conda env name", "Conda-Umgebungsname")
+            )
+        if hasattr(self, "tts_py_entry"):
+            self.tts_py_entry.configure(
+                placeholder_text=self._tr(
+                    "Full python.exe path (or relative to app folder)",
+                    "Voller Pfad zu python.exe (oder relativ zum App-Ordner)",
+                )
+            )
+        if hasattr(self, "btn_tts_ref_browse"):
+            self.btn_tts_ref_browse.configure(text=self._tr("Browse...", "Durchsuchen..."))
+        if hasattr(self, "tts_drop_zone"):
+            cur = self.tts_drop_zone.cget("text") or ""
+            if "Reference loaded" not in cur and "Referenz" not in cur and "✅" not in cur:
+                self.tts_drop_zone.configure(
+                    text=self._tr(
+                        "Drop reference media here\n(audio/video)",
+                        "Referenz-Medien hier ablegen\n(Audio/Video)"
+                    )
+                )
+        if hasattr(self, "btn_tts_save_profile"):
+            self.btn_tts_save_profile.configure(text=self._tr("Save profile", "Profil speichern"))
+        if hasattr(self, "chk_tts_multi_ref"):
+            self.chk_tts_multi_ref.configure(
+                text=self._tr("Multi-reference (optional)", "Multi-Referenz (optional)")
+            )
+        if hasattr(self, "btn_tts_multi_add"):
+            self.btn_tts_multi_add.configure(text=self._tr("Add files", "Dateien hinzufuegen"))
+        if hasattr(self, "btn_tts_multi_clear"):
+            self.btn_tts_multi_clear.configure(text=self._tr("Clear list", "Liste leeren"))
+        if hasattr(self, "btn_tts_multi_build"):
+            self.btn_tts_multi_build.configure(text=self._tr("Build model", "Modell bauen"))
+        if hasattr(self, "chk_tts_multi_quality"):
+            self.chk_tts_multi_quality.configure(
+                text=self._tr("Quality picker (cleanest segments)", "Qualitaetsauswahl (sauberste Segmente)")
+            )
+        if hasattr(self, "btn_tts_reload_profiles"):
+            self.btn_tts_reload_profiles.configure(text=self._tr("Reload", "Neu laden"))
+        if hasattr(self, "btn_tts_delete_profile"):
+            self.btn_tts_delete_profile.configure(text=self._tr("Delete profile", "Profil loeschen"))
+        if hasattr(self, "chk_tts_advanced"):
+            self.chk_tts_advanced.configure(text=self._tr("Advanced controls", "Erweiterte Optionen"))
+        if hasattr(self, "chk_tts_expert"):
+            self.chk_tts_expert.configure(text=self._tr("Expert tuning", "Experten-Feineinstellung"))
         if hasattr(self, "btn_tts_export"):
             self.btn_tts_export.configure(
                 text=self._tr("Export MP3 (local voice)", "MP3 exportieren (lokale Stimme)")
             )
-        if hasattr(self, "lbl_tts_engine_hint") and hasattr(self, "tts_engine_var"):
-            self.on_tts_engine_changed(self.tts_engine_var.get())
+        if hasattr(self, "btn_tts_cancel"):
+            self.btn_tts_cancel.configure(text=self._tr("Cancel TTS", "TTS abbrechen"))
+        if hasattr(self, "lbl_tts_intro1"):
+            self.lbl_tts_intro1.configure(
+                text=self._tr(
+                    "Generate MP3 voice output locally (no API).",
+                    "MP3-Stimmausgabe lokal erzeugen (ohne API).",
+                )
+            )
+        if hasattr(self, "lbl_tts_intro2"):
+            self.lbl_tts_intro2.configure(
+                text=self._tr(
+                    "Use a short reference clip, save a named voice profile by language, then export MP3.",
+                    "Kurzes Referenz-Audio nutzen, Stimmprofil nach Sprache speichern, dann MP3 exportieren.",
+                )
+            )
+        if hasattr(self, "lbl_tts_voice_engine_fixed"):
+            self.lbl_tts_voice_engine_fixed.configure(
+                text=self._tr(
+                    "Voice engine: Coqui XTTS v2 only (fixed in this build; multilingual, e.g. DE/EN).",
+                    "Stimmen-Engine: Nur Coqui XTTS v2 (in dieser fest eingestellt; mehrsprachig, z.B. DE/EN).",
+                )
+            )
+        self._update_tts_engine_hint()
 
     # --- TAB 1: SOURCE ---
     def build_source_tab(self):
@@ -319,12 +642,16 @@ class TranskriptionApp(DnD_CTk):
         )
         self.lbl_cut_hint.pack(fill="x", padx=12, pady=(0, 10))
 
-        ctk.CTkLabel(
+        self.lbl_whisper_note = ctk.CTkLabel(
             src,
-            text="Whisper note: bigger model = better text, but slower.",
+            text=self._tr(
+                "Whisper note: bigger model = better text, but slower.",
+                "Hinweis: groesseres Whisper-Modell = besserer Text, aber langsamer."
+            ),
             text_color="gray70",
             anchor="w"
-        ).pack(fill='x', padx=10, pady=(0, 6))
+        )
+        self.lbl_whisper_note.pack(fill='x', padx=10, pady=(0, 6))
 
         options_frame = ctk.CTkFrame(src, fg_color='transparent')
         options_frame.pack(fill='x', padx=10, pady=(0, 10))
@@ -349,7 +676,8 @@ class TranskriptionApp(DnD_CTk):
         )
         self.language_menu.pack(side='left', padx=(0, 18))
 
-        ctk.CTkLabel(options_frame, text="Device:").pack(side='left', padx=(0, 8))
+        self.lbl_device = ctk.CTkLabel(options_frame, text=self._tr("Device:", "Geraet:"))
+        self.lbl_device.pack(side='left', padx=(0, 8))
         self.device_var = ctk.StringVar(value="auto")
         self.device_menu = ctk.CTkOptionMenu(
             options_frame,
@@ -364,19 +692,25 @@ class TranskriptionApp(DnD_CTk):
 
         chunk_frame = ctk.CTkFrame(src, fg_color='transparent')
         chunk_frame.pack(fill='x', padx=10, pady=(0, 10))
-        ctk.CTkLabel(chunk_frame, text="Chunk size (words):").pack(side='left', padx=(0, 8))
+        self.lbl_chunk_words = ctk.CTkLabel(chunk_frame, text=self._tr("Chunk size (words):", "Chunk-Groesse (Woerter):"))
+        self.lbl_chunk_words.pack(side='left', padx=(0, 8))
         self.chunk_size_var = ctk.StringVar(value="0")
         self.entry_chunk_size = ctk.CTkEntry(chunk_frame, textvariable=self.chunk_size_var, width=110)
         self.entry_chunk_size.pack(side='left', padx=(0, 10))
-        ctk.CTkLabel(chunk_frame, text="Max chars per block:").pack(side='left', padx=(0, 8))
+        self.lbl_chunk_chars = ctk.CTkLabel(chunk_frame, text=self._tr("Max chars per block:", "Max. Zeichen pro Block:"))
+        self.lbl_chunk_chars.pack(side='left', padx=(0, 8))
         self.chunk_char_limit_var = ctk.StringVar(value="500")
         self.entry_chunk_char_limit = ctk.CTkEntry(chunk_frame, textvariable=self.chunk_char_limit_var, width=110)
         self.entry_chunk_char_limit.pack(side='left', padx=(0, 10))
-        ctk.CTkLabel(
+        self.lbl_chunk_hint = ctk.CTkLabel(
             chunk_frame,
-            text="Set 0 to disable a limit. Example: chars=0, words=500 -> word limit only.",
+            text=self._tr(
+                "Set 0 to disable a limit. Example: chars=0, words=500 -> word limit only.",
+                "0 = kein Limit. Beispiel: Zeichen=0, Woerter=500 -> nur Wortlimit."
+            ),
             text_color="gray70"
-        ).pack(side='left')
+        )
+        self.lbl_chunk_hint.pack(side='left')
 
         punctuation_frame = ctk.CTkFrame(src, fg_color='transparent')
         punctuation_frame.pack(fill='x', padx=10, pady=(0, 10))
@@ -389,11 +723,15 @@ class TranskriptionApp(DnD_CTk):
             offvalue="0"
         )
         self.chk_auto_punct.pack(side='left', padx=(0, 10))
-        ctk.CTkLabel(
+        self.lbl_auto_punct_hint = ctk.CTkLabel(
             punctuation_frame,
-            text="If text has little punctuation, add basic punctuation automatically.",
+            text=self._tr(
+                "If text has little punctuation, add basic punctuation automatically.",
+                "Wenn kaum Satzzeichen vorkommen, werden einfache Zeichen ergaenzt."
+            ),
             text_color="gray70"
-        ).pack(side='left')
+        )
+        self.lbl_auto_punct_hint.pack(side='left')
 
         auto_chunk_frame = ctk.CTkFrame(src, fg_color='transparent')
         auto_chunk_frame.pack(fill='x', padx=10, pady=(0, 10))
@@ -409,7 +747,10 @@ class TranskriptionApp(DnD_CTk):
 
         preprocess_frame = ctk.CTkFrame(src, fg_color='transparent')
         preprocess_frame.pack(fill='x', padx=10, pady=(0, 10))
-        ctk.CTkLabel(preprocess_frame, text="Audio preprocessing:").pack(side='left', padx=(0, 8))
+        self.lbl_audio_preprocess = ctk.CTkLabel(
+            preprocess_frame, text=self._tr("Audio preprocessing:", "Audio-Vorverarbeitung:")
+        )
+        self.lbl_audio_preprocess.pack(side='left', padx=(0, 8))
         self.audio_preprocess_var = ctk.StringVar(value="off")
         self.audio_preprocess_menu = ctk.CTkOptionMenu(
             preprocess_frame,
@@ -417,11 +758,15 @@ class TranskriptionApp(DnD_CTk):
             values=["off", "voice_clean", "speech_boost", "music_heavy_cleanup"]
         )
         self.audio_preprocess_menu.pack(side='left', padx=(0, 10))
-        ctk.CTkLabel(
+        self.lbl_audio_preprocess_hint = ctk.CTkLabel(
             preprocess_frame,
-            text="voice_clean: balanced, speech_boost: stronger voice focus, music_heavy_cleanup: aggressive bg-music reduction.",
+            text=self._tr(
+                "voice_clean: balanced, speech_boost: stronger voice focus, music_heavy_cleanup: aggressive bg-music reduction.",
+                "voice_clean: ausgewogen, speech_boost: staerkere Sprachbetonung, music_heavy_cleanup: aggressiver bei Hintergrundmusik."
+            ),
             text_color="gray70"
-        ).pack(side='left')
+        )
+        self.lbl_audio_preprocess_hint.pack(side='left')
 
         self.transcription_cancel_requested = False
         action_row = ctk.CTkFrame(src, fg_color="transparent")
@@ -537,7 +882,8 @@ class TranskriptionApp(DnD_CTk):
 
         presets_frame = ctk.CTkFrame(frame, fg_color='transparent')
         presets_frame.pack(fill='x', padx=10, pady=(8, 2))
-        ctk.CTkLabel(presets_frame, text="Filter preset:", anchor='w').pack(side='left', padx=(0, 8))
+        self.lbl_filter_preset = ctk.CTkLabel(presets_frame, text=self._tr("Filter preset:", "Filter-Preset:"), anchor='w')
+        self.lbl_filter_preset.pack(side='left', padx=(0, 8))
         self.preset_var = ctk.StringVar(value="")
         self.preset_menu = ctk.CTkOptionMenu(presets_frame, variable=self.preset_var, values=[], width=220)
         self.preset_menu.pack(side='left', padx=(0, 8))
@@ -556,12 +902,22 @@ class TranskriptionApp(DnD_CTk):
         self.btn_delete_preset = ctk.CTkButton(preset_actions_frame, text="Delete preset", command=self.delete_selected_preset, width=102)
         self.btn_delete_preset.pack(side='left')
 
-        ctk.CTkLabel(frame, text="Delete words/phrases (comma-separated):", anchor='w').pack(fill='x', padx=10, pady=(10, 0))
+        self.lbl_filter_delete = ctk.CTkLabel(
+            frame,
+            text=self._tr("Delete words/phrases (comma-separated):", "Woerter/Phrasen loeschen (Komma-getrennt):"),
+            anchor='w'
+        )
+        self.lbl_filter_delete.pack(fill='x', padx=10, pady=(10, 0))
         self.entry_loeschen = ctk.CTkTextbox(frame, height=80)
         self.entry_loeschen.insert("0.0", "ähm, ah, also")
         self.entry_loeschen.pack(fill='x', padx=10, pady=5)
 
-        ctk.CTkLabel(frame, text="Replace (format old:new, comma-separated):", anchor='w').pack(fill='x', padx=10, pady=(10, 0))
+        self.lbl_filter_replace = ctk.CTkLabel(
+            frame,
+            text=self._tr("Replace (format old:new, comma-separated):", "Ersetzen (Format alt:neu, Komma-getrennt):"),
+            anchor='w'
+        )
+        self.lbl_filter_replace.pack(fill='x', padx=10, pady=(10, 0))
         self.entry_ersetzen = ctk.CTkTextbox(frame, height=80)
         self.entry_ersetzen.pack(fill='x', padx=10, pady=5)
 
@@ -611,7 +967,11 @@ class TranskriptionApp(DnD_CTk):
 
         translate_frame = ctk.CTkFrame(self.tab_export)
         translate_frame.pack(fill='x', padx=10, pady=(0, 8))
-        ctk.CTkLabel(translate_frame, text="Translate current editor text:").pack(side='left', padx=(10, 8), pady=8)
+        self.lbl_translate_heading = ctk.CTkLabel(
+            translate_frame,
+            text=self._tr("Translate current editor text:", "Aktuellen Editor-Text uebersetzen:")
+        )
+        self.lbl_translate_heading.pack(side='left', padx=(10, 8), pady=8)
         self.translate_source_var = ctk.StringVar(value="en")
         self.translate_target_var = ctk.StringVar(value="de")
         self.translate_source_menu = ctk.CTkOptionMenu(translate_frame, variable=self.translate_source_var, values=LANGUAGE_CODES, width=90)
@@ -631,7 +991,8 @@ class TranskriptionApp(DnD_CTk):
             command=self.swap_translate_languages
         )
         self.btn_translate_swap.pack(side='left', padx=(0, 10))
-        ctk.CTkLabel(translate_frame, text="Action:").pack(side='left', padx=(6, 6))
+        self.lbl_translate_action = ctk.CTkLabel(translate_frame, text=self._tr("Action:", "Aktion:"))
+        self.lbl_translate_action.pack(side='left', padx=(6, 6))
         translate_actions = [
             "Translate + Replace",
             "Translate + Save TXT",
@@ -656,11 +1017,15 @@ class TranskriptionApp(DnD_CTk):
             width=62
         )
         self.btn_translate_run.pack(side='left', padx=(0, 6))
-        ctk.CTkLabel(
+        self.lbl_translate_hint = ctk.CTkLabel(
             translate_frame,
-            text="Uses Google Translate backend. Keeps block style.",
+            text=self._tr(
+                "Uses Google Translate backend. Keeps block style.",
+                "Nutzt Google Translate. Blockformat bleibt erhalten."
+            ),
             text_color="gray70"
-        ).pack(side='left', padx=(10, 0))
+        )
+        self.lbl_translate_hint.pack(side='left', padx=(10, 0))
 
         quick_actions_frame = ctk.CTkFrame(self.tab_export, fg_color='transparent')
         quick_actions_frame.pack(fill='x', padx=10, pady=(0, 8))
@@ -725,16 +1090,21 @@ class TranskriptionApp(DnD_CTk):
             wraplength=400
         )
         self.lbl_davinci_desc.pack(pady=10)
-        ctk.CTkLabel(
+        self.lbl_davinci_file_hint = ctk.CTkLabel(
             frame,
-            text="Uses the same file as Tab 1 (drag & drop). Temp WAV is not used in Resolve.",
+            text=self._tr(
+                "Uses the same file as Tab 1 (drag & drop). Temp WAV is not used in Resolve.",
+                "Gleiche Datei wie Tab 1 (Drag & Drop). Temp-WAV wird in Resolve nicht genutzt."
+            ),
             text_color="gray70",
             wraplength=420,
-        ).pack(pady=(0, 6))
+        )
+        self.lbl_davinci_file_hint.pack(pady=(0, 6))
 
         options_frame = ctk.CTkFrame(frame, fg_color='transparent')
         options_frame.pack(fill='x', padx=20, pady=(0, 10))
-        ctk.CTkLabel(options_frame, text="Engine:").pack(side='left', padx=(0, 8))
+        self.lbl_engine = ctk.CTkLabel(options_frame, text=self._tr("Engine:", "Engine:"))
+        self.lbl_engine.pack(side='left', padx=(0, 8))
         self.export_engine_var = ctk.StringVar(value="davinci")
         self.export_engine_menu = ctk.CTkOptionMenu(
             options_frame,
@@ -744,7 +1114,8 @@ class TranskriptionApp(DnD_CTk):
         )
         self.export_engine_menu.pack(side='left', padx=(0, 16))
 
-        ctk.CTkLabel(options_frame, text="Action:").pack(side='left', padx=(0, 8))
+        self.lbl_export_action = ctk.CTkLabel(options_frame, text=self._tr("Action:", "Aktion:"))
+        self.lbl_export_action.pack(side='left', padx=(0, 8))
         self.export_action_var = ctk.StringVar(value="cut")
         self.export_action_menu = ctk.CTkOptionMenu(
             options_frame,
@@ -762,21 +1133,27 @@ class TranskriptionApp(DnD_CTk):
 
         ffmpeg_frame = ctk.CTkFrame(frame, fg_color='transparent')
         ffmpeg_frame.pack(fill='x', padx=20, pady=(0, 8))
-        ctk.CTkLabel(ffmpeg_frame, text="Tone frequency (Hz):").pack(side='left', padx=(0, 8))
+        self.lbl_tone_freq = ctk.CTkLabel(ffmpeg_frame, text=self._tr("Tone frequency (Hz):", "Ton-Frequenz (Hz):"))
+        self.lbl_tone_freq.pack(side='left', padx=(0, 8))
         self.tone_freq_var = ctk.StringVar(value="900")
         self.entry_tone_freq = ctk.CTkEntry(ffmpeg_frame, textvariable=self.tone_freq_var, width=100)
         self.entry_tone_freq.pack(side='left', padx=(0, 10))
-        ctk.CTkLabel(
+        self.lbl_tone_freq_hint = ctk.CTkLabel(
             ffmpeg_frame,
-            text="Lower Hz is deeper, higher Hz is sharper. 900 Hz is a good middle value.",
+            text=self._tr(
+                "Lower Hz is deeper, higher Hz is sharper. 900 Hz is a good middle value.",
+                "Niedrigere Hz = tiefer, hoehere Hz = schaerfer. 900 Hz ist ein guter Mittelwert."
+            ),
             text_color="gray70"
-        ).pack(side='left')
+        )
+        self.lbl_tone_freq_hint.pack(side='left')
 
         beep_frame = ctk.CTkFrame(frame, fg_color='transparent')
         beep_frame.pack(fill='x', padx=20, pady=(0, 8))
         beep_row = ctk.CTkFrame(beep_frame, fg_color='transparent')
         beep_row.pack(fill='x')
-        ctk.CTkLabel(beep_row, text="Beep level:").pack(side='left', padx=(0, 8))
+        self.lbl_beep_level = ctk.CTkLabel(beep_row, text=self._tr("Beep level:", "Beep-Lautstaerke:"))
+        self.lbl_beep_level.pack(side='left', padx=(0, 8))
         self.beep_slider = ctk.CTkSlider(beep_row, from_=0, to=100, width=220, number_of_steps=100)
         self.lbl_beep_level_val = ctk.CTkLabel(beep_row, text="35%", width=44)
 
@@ -787,24 +1164,35 @@ class TranskriptionApp(DnD_CTk):
         self.beep_slider.pack(side='left', padx=(0, 10), fill='x', expand=True)
         self.lbl_beep_level_val.pack(side='left')
         self.beep_slider.set(35)
-        ctk.CTkLabel(
+        self.lbl_beep_hint = ctk.CTkLabel(
             beep_frame,
-            text="Loudness of the sine beep in replaced segments (FFmpeg → replace with tone only). 0% ≈ off.",
+            text=self._tr(
+                "Loudness of the sine beep in replaced segments (FFmpeg → replace with tone only). 0% ≈ off.",
+                "Lautstaerke des Sinus-Beeps in ersetzten Segmenten (nur FFmpeg „Ton ersetzen“). 0% ≈ aus."
+            ),
             text_color="gray70",
             anchor="w",
-        ).pack(fill='x', pady=(4, 0))
+        )
+        self.lbl_beep_hint.pack(fill='x', pady=(4, 0))
 
         segment_frame = ctk.CTkFrame(frame, fg_color='transparent')
         segment_frame.pack(fill='x', padx=20, pady=(0, 8))
-        ctk.CTkLabel(segment_frame, text="Min segment duration (sec):").pack(side='left', padx=(0, 8))
+        self.lbl_min_segment = ctk.CTkLabel(
+            segment_frame, text=self._tr("Min segment duration (sec):", "Min. Segmentlaenge (s):")
+        )
+        self.lbl_min_segment.pack(side='left', padx=(0, 8))
         self.min_segment_var = ctk.StringVar(value="0.20")
         self.entry_min_segment = ctk.CTkEntry(segment_frame, textvariable=self.min_segment_var, width=100)
         self.entry_min_segment.pack(side='left', padx=(0, 10))
-        ctk.CTkLabel(
+        self.lbl_min_segment_hint = ctk.CTkLabel(
             segment_frame,
-            text="Shorter segments are ignored to avoid choppy edits. 0.20s is a good default.",
+            text=self._tr(
+                "Shorter segments are ignored to avoid choppy edits. 0.20s is a good default.",
+                "Kuerzere Segmente werden ignoriert (weniger Ruckeln). 0,20 s ist ein guter Standard."
+            ),
             text_color="gray70"
-        ).pack(side='left')
+        )
+        self.lbl_min_segment_hint.pack(side='left')
 
         subtitle_frame = ctk.CTkFrame(frame, fg_color='transparent')
         subtitle_frame.pack(fill='x', padx=20, pady=(0, 8))
@@ -835,11 +1223,13 @@ class TranskriptionApp(DnD_CTk):
             offvalue="0",
         )
         self.chk_embed_srt_davinci.pack(side='left', padx=(14, 0))
-        ctk.CTkLabel(subtitle_frame, text="SRT lang:").pack(side='left', padx=(14, 6))
+        self.lbl_srt_lang = ctk.CTkLabel(subtitle_frame, text=self._tr("SRT lang:", "SRT-Sprache:"))
+        self.lbl_srt_lang.pack(side='left', padx=(14, 6))
         self.srt_lang_var = ctk.StringVar(value="de")
         self.entry_srt_lang = ctk.CTkEntry(subtitle_frame, textvariable=self.srt_lang_var, width=54)
         self.entry_srt_lang.pack(side='left')
-        ctk.CTkLabel(subtitle_frame, text="Max words:").pack(side='left', padx=(12, 6))
+        self.lbl_srt_max_words = ctk.CTkLabel(subtitle_frame, text=self._tr("Max words:", "Max. Woerter:"))
+        self.lbl_srt_max_words.pack(side='left', padx=(12, 6))
         self.srt_max_words_var = ctk.StringVar(value="10")
         self.entry_srt_max_words = ctk.CTkEntry(subtitle_frame, textvariable=self.srt_max_words_var, width=54)
         self.entry_srt_max_words.pack(side='left')
@@ -867,13 +1257,31 @@ class TranskriptionApp(DnD_CTk):
 
         api_frame = ctk.CTkFrame(frame, fg_color='transparent')
         api_frame.pack(fill='x', padx=20, pady=(0, 8))
-        ctk.CTkLabel(api_frame, text="DaVinci API path (optional):").pack(side='left', padx=(0, 8))
+        self.lbl_davinci_api_path = ctk.CTkLabel(
+            api_frame,
+            text=self._tr("DaVinci API path (optional):", "DaVinci-API-Pfad (optional):"),
+            text_color="gray60",
+            anchor="w",
+        )
+        self.lbl_davinci_api_path.pack(side='left', padx=(0, 8))
         self.davinci_api_path_var = ctk.StringVar(value=str(self.ui_settings.get("davinci_api_path", "")).strip())
-        self.entry_davinci_api_path = ctk.CTkEntry(api_frame, textvariable=self.davinci_api_path_var, width=430)
+        self.entry_davinci_api_path = ctk.CTkEntry(
+            api_frame,
+            textvariable=self.davinci_api_path_var,
+            width=430,
+            placeholder_text=self._tr(
+                "Optional — path to DaVinciResolveScript.py if not on PATH",
+                "Optional — Pfad zu DaVinciResolveScript.py falls nicht im PATH",
+            ),
+            fg_color="#2a2d30",
+            border_color="#45494e",
+            text_color="gray72",
+            placeholder_text_color="gray52",
+        )
         self.entry_davinci_api_path.pack(side='left', padx=(0, 8))
         self.btn_davinci_api_browse = ctk.CTkButton(
             api_frame,
-            text="Browse...",
+            text=self._tr("Browse...", "Durchsuchen..."),
             width=82,
             command=self.browse_davinci_api_path
         )
@@ -881,7 +1289,8 @@ class TranskriptionApp(DnD_CTk):
 
         preset_frame = ctk.CTkFrame(frame, fg_color="transparent")
         preset_frame.pack(fill="x", padx=20, pady=(8, 8))
-        ctk.CTkLabel(preset_frame, text="Render preset:").pack(side="left", padx=(0, 8))
+        self.lbl_render_preset = ctk.CTkLabel(preset_frame, text=self._tr("Render preset:", "Render-Preset:"))
+        self.lbl_render_preset.pack(side="left", padx=(0, 8))
 
         history = self._get_davinci_preset_history()
         default_preset = history[0] if history else "(none)"
@@ -912,13 +1321,17 @@ class TranskriptionApp(DnD_CTk):
         )
         self.btn_delete_davinci_preset.pack(side="left")
 
-        ctk.CTkLabel(
+        self.lbl_davinci_preset_tip = ctk.CTkLabel(
             frame,
-            text="Tip: Type a preset name once, click Save, then pick it from the dropdown next time.",
+            text=self._tr(
+                "Tip: Type a preset name once, click Save, then pick it from the dropdown next time.",
+                "Tipp: Preset-Namen einmal eintragen, Speichern, dann beim naechsten Mal aus der Liste waehlen."
+            ),
             text_color="gray70",
             wraplength=520,
             anchor="w",
-        ).pack(fill="x", padx=20, pady=(0, 6))
+        )
+        self.lbl_davinci_preset_tip.pack(fill="x", padx=20, pady=(0, 6))
 
         self.btn_davinci = ctk.CTkButton(
             frame,
@@ -942,18 +1355,26 @@ class TranskriptionApp(DnD_CTk):
         self.lbl_tts_disabled_info = ctk.CTkLabel(frame, text="", text_color="orange", anchor="w")
         self.lbl_tts_disabled_info.pack(fill='x', padx=10, pady=(6, 2))
 
-        ctk.CTkLabel(
+        self.lbl_tts_intro1 = ctk.CTkLabel(
             frame,
-            text="Generate MP3 voice output locally (no API).",
+            text=self._tr(
+                "Generate MP3 voice output locally (no API).",
+                "MP3-Stimmausgabe lokal erzeugen (ohne API).",
+            ),
             text_color="gray70",
-            anchor="w"
-        ).pack(fill='x', padx=10, pady=(10, 4))
-        ctk.CTkLabel(
+            anchor="w",
+        )
+        self.lbl_tts_intro1.pack(fill='x', padx=10, pady=(10, 4))
+        self.lbl_tts_intro2 = ctk.CTkLabel(
             frame,
-            text="Use a short reference clip, save a named voice profile by language, then export MP3.",
+            text=self._tr(
+                "Use a short reference clip, save a named voice profile by language, then export MP3.",
+                "Kurzes Referenz-Audio nutzen, Stimmprofil nach Sprache speichern, dann MP3 exportieren.",
+            ),
             text_color="gray70",
-            anchor="w"
-        ).pack(fill='x', padx=10, pady=(0, 12))
+            anchor="w",
+        )
+        self.lbl_tts_intro2.pack(fill='x', padx=10, pady=(0, 12))
 
         engine_block = ctk.CTkFrame(frame, fg_color='transparent')
         engine_block.pack(fill='x', padx=10, pady=(0, 10))
@@ -966,16 +1387,17 @@ class TranskriptionApp(DnD_CTk):
             self._save_ui_settings()
         except Exception:
             pass
-        ctk.CTkLabel(
+        self.lbl_tts_voice_engine_fixed = ctk.CTkLabel(
             row_eng,
             text=self._tr(
-                "Voice engine: Coqui XTTS v2 only (fixed in this build; multilingual, e.g. DE/EN). No OpenVoice, no HF model download here.",
-                "Stimmen-Engine: Nur Coqui XTTS v2 (in dieser fest eingestellt; mehrsprachig, z.B. DE/EN). Kein OpenVoice, kein HF-Modell-Download.",
+                "Voice engine: Coqui XTTS v2 only (fixed in this build; multilingual, e.g. DE/EN).",
+                "Stimmen-Engine: Nur Coqui XTTS v2 (in dieser fest eingestellt; mehrsprachig, z.B. DE/EN).",
             ),
             text_color="gray80",
             anchor="w",
             justify="left",
-        ).pack(side='left', fill='x', expand=True)
+        )
+        self.lbl_tts_voice_engine_fixed.pack(side='left', fill='x', expand=True)
         self.lbl_tts_engine_hint = ctk.CTkLabel(
             engine_block,
             text="",
@@ -1117,7 +1539,7 @@ class TranskriptionApp(DnD_CTk):
         self.btn_tts_multi_clear.pack(side='left', padx=(6, 0))
         self.btn_tts_multi_build = ctk.CTkButton(
             multi_ref_buttons,
-            text="Build merged preview",
+            text=self._tr("Build model", "Modell bauen"),
             command=self.build_tts_multi_reference_preview,
             width=136
         )
@@ -3887,7 +4309,12 @@ class TranskriptionApp(DnD_CTk):
         if engine == "davinci":
             self.export_action_menu.configure(values=["cut"])
             self.export_action_var.set("cut")
-            self.lbl_engine_hint.configure(text="Replace options are available with FFmpeg only.")
+            self.lbl_engine_hint.configure(
+                text=self._tr(
+                    "Replace options are available with FFmpeg only.",
+                    "Ersetzen-Optionen sind nur mit FFmpeg verfuegbar."
+                )
+            )
         else:
             self.export_action_menu.configure(values=["cut", "replace_with_silence", "replace_with_tone"])
             if self.export_action_var.get() not in ["cut", "replace_with_silence", "replace_with_tone"]:

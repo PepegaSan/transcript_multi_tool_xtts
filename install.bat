@@ -2,33 +2,54 @@
 setlocal EnableExtensions
 cd /d "%~dp0"
 
-echo Smart Transcript — XTTS v2 edition ^(Tab 5 uses Coqui XTTS only; no OpenVoice^).
-echo.
-
-echo [1/8] Use Text-to-Speech (Tab 5)?
+rem Tab 5 (Coqui XTTS) is always installed when dependencies succeed.
 set "USE_TTS=Y"
-set /p USE_TTS=Use TTS features? Y/n: 
-if not defined USE_TTS set "USE_TTS=Y"
-if /I "%USE_TTS%"=="N" set "USE_TTS=N"
-if /I not "%USE_TTS%"=="N" set "USE_TTS=Y"
-if /I "%USE_TTS%"=="Y" (
-  echo TTS selected: installer will install Coqui "TTS" ^(XTTS v2^).
-) else (
-  echo TTS disabled: Tab 5 will be disabled in app.
-)
+
+echo Smart Transcript — XTTS v2 edition.
 echo.
+echo Python: use **3.11 or 3.10** ^(Coqui TTS / Whisper are not tested on older Python here^).
+echo.
+echo Where should packages be installed?
+echo   1^) New **venv** in this folder ^(recommended; needs `py -3.11` or `py -3.10` from python.org^)
+echo   2^) **Conda** environment ^(`conda` must work on PATH^)
+echo   3^) **`python` from PATH** ^(no new venv; first `python` on PATH must be 3.11 or 3.10^)
+echo.
+set /p RUNTIME_CHOICE=Choose 1, 2 or 3 [default 1]: 
+if not defined RUNTIME_CHOICE set "RUNTIME_CHOICE=1"
 
-echo [2/8] Choose environment type
-echo   1^) Python venv ^(recommended^)
-echo   2^) Conda env
-set /p ENV_MODE=Select 1 or 2 [default 1]: 
-if not defined ENV_MODE set "ENV_MODE=1"
-
-if "%ENV_MODE%"=="2" goto conda_mode
+if "%RUNTIME_CHOICE%"=="2" goto conda_mode
+if "%RUNTIME_CHOICE%"=="3" goto path_python_mode
 goto venv_mode
 
+:path_python_mode
+set "VENV_DIR="
+echo.
+echo [PATH] Detecting first `python` on PATH...
+where python >nul 2>&1
+if errorlevel 1 (
+  echo ERROR: No `python` on PATH. Install Python 3.11/3.10 or pick option 1 or 2.
+  goto fail
+)
+set "PY_EXE="
+for /f "delims=" %%A in ('where python') do (
+  set "PY_EXE=%%A"
+  goto path_have_exe
+)
+:path_have_exe
+echo Using: "%PY_EXE%"
+"%PY_EXE%" -c "import sys; raise SystemExit(0 if sys.version_info[:2] in ((3,10),(3,11)) else 1)" >nul 2>&1
+if errorlevel 1 (
+  echo ERROR: PATH python must be 3.10 or 3.11. Run:  python --version
+  goto fail
+)
+for /f "usebackq delims=" %%V in (`"%PY_EXE%" -c "import sys; print('%%d.%%d' %% (sys.version_info.major, sys.version_info.minor))"`) do set "RUNTIME_PY_VER=%%V"
+echo OK: Python %RUNTIME_PY_VER%
+set "START_MODE=PYTHON"
+goto install_requirements
+
 :venv_mode
-echo [3/8] Find compatible Python...
+echo.
+echo [Venv] Looking for Python 3.11 / 3.10 via `py` launcher...
 set "PY_ARG="
 set "PY_VER="
 py -3.11 -c "import sys" >nul 2>&1
@@ -37,38 +58,34 @@ if defined PY_ARG goto py_ok
 py -3.10 -c "import sys" >nul 2>&1
 if not errorlevel 1 set "PY_ARG=-3.10" & set "PY_VER=3.10"
 if defined PY_ARG goto py_ok
-py -3.9 -c "import sys" >nul 2>&1
-if not errorlevel 1 set "PY_ARG=-3.9" & set "PY_VER=3.9"
-if defined PY_ARG goto py_ok
-echo ERROR: No compatible Python found.
-echo Please install Python 3.9, 3.10, or 3.11 ^(with launcher^).
+echo ERROR: No Python 3.11 or 3.10 found for `py -3.11` / `py -3.10`.
+echo Install from https://www.python.org/ ^(enable "py launcher"^), then re-run.
 goto fail
 
 :py_ok
-echo Using Python %PY_VER%
+echo Using: py %PY_ARG% ^(Python %PY_VER%^)
 echo.
-echo [4/8] Select venv...
-if exist ".venv\Scripts\python.exe" echo  - found .venv
-if exist ".venv_py311\Scripts\python.exe" echo  - found .venv_py311
-if exist ".venv_py310\Scripts\python.exe" echo  - found .venv_py310
-if exist ".venv_py39\Scripts\python.exe" echo  - found .venv_py39
+echo Existing venv folders in this directory:
+if exist ".venv\Scripts\python.exe" echo   - .venv
+if exist ".venv_py311\Scripts\python.exe" echo   - .venv_py311
+if exist ".venv_py310\Scripts\python.exe" echo   - .venv_py310
 echo.
 
 set "USE_EXISTING="
-set /p USE_EXISTING=Use existing venv path? y/N: 
+set /p USE_EXISTING=Use an **existing** venv folder here? y/N: 
 if /I "%USE_EXISTING%"=="y" goto use_existing_venv
 goto create_new_venv
 
 :use_existing_venv
 set "VENV_DIR="
-set /p VENV_DIR=Enter existing venv folder path (example .venv): 
+set /p VENV_DIR=Enter venv folder name or path ^(e.g. .venv_py310^): 
 if not defined VENV_DIR echo ERROR: No path entered.& goto fail
 if not exist "%VENV_DIR%\Scripts\python.exe" echo ERROR: Not a valid venv: %VENV_DIR%& goto fail
 goto venv_ready
 
 :create_new_venv
 set "VENV_NAME_INPUT="
-set /p VENV_NAME_INPUT=Optional new venv name (Enter for auto): 
+set /p VENV_NAME_INPUT=New venv folder name ^(Enter for .venv_py%PY_VER:.=%^): 
 if not defined VENV_NAME_INPUT set "VENV_NAME_INPUT=.venv_py%PY_VER:.=%"
 set "VENV_NAME_INPUT=%VENV_NAME_INPUT: =_%"
 set "VENV_DIR=%VENV_NAME_INPUT%"
@@ -81,14 +98,13 @@ if errorlevel 1 echo ERROR: Could not create venv.& goto fail
 set "PY_EXE=%VENV_DIR%\Scripts\python.exe"
 if not exist "%PY_EXE%" echo ERROR: Python executable not found in venv.& goto fail
 set "START_MODE=PYTHON"
-"%PY_EXE%" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" > ".tmp_pyver.txt"
-set "RUNTIME_PY_VER="
-set /p RUNTIME_PY_VER=<".tmp_pyver.txt"
-del ".tmp_pyver.txt" >nul 2>&1
+for /f "usebackq delims=" %%i in (`"%PY_EXE%" -c "import sys; print('%%d.%%d' %% (sys.version_info.major, sys.version_info.minor))"`) do set "RUNTIME_PY_VER=%%i"
+echo Venv Python: %RUNTIME_PY_VER%
 goto install_requirements
 
 :conda_mode
-echo [3/8] Find conda...
+echo.
+echo [Conda] Locating conda...
 set "CONDA_CMD="
 if defined CONDA_EXE set "CONDA_CMD=%CONDA_EXE%"
 if not defined CONDA_CMD (
@@ -102,28 +118,27 @@ if not defined CONDA_CMD if exist "%ProgramData%\miniconda3\Scripts\conda.exe" s
 if not defined CONDA_CMD if exist "%ProgramData%\MiniConda3\Scripts\conda.exe" set "CONDA_CMD=%ProgramData%\MiniConda3\Scripts\conda.exe"
 if not defined CONDA_CMD if exist "%ProgramData%\anaconda3\Scripts\conda.exe" set "CONDA_CMD=%ProgramData%\anaconda3\Scripts\conda.exe"
 if not defined CONDA_CMD (
-  echo ERROR: Conda not found.
-  echo Install Miniconda/Anaconda or add conda to PATH.
+  echo ERROR: Conda not found. Install Miniconda/Anaconda or add conda to PATH.
   goto fail
 )
-echo Using conda: %CONDA_CMD%
+echo Using: %CONDA_CMD%
+echo Env will use **Python 3.11 or 3.10** only.
 echo.
-echo [4/8] Available conda envs:
 "%CONDA_CMD%" env list
 echo.
-set /p CONDA_ENV_NAME=Enter existing env name to use (or press Enter to create new): 
+set /p CONDA_ENV_NAME=Existing env name to use ^(or Enter to create new^): 
 if defined CONDA_ENV_NAME goto conda_env_selected
 
 set "CONDA_ENV_NAME=transcript_py311"
 set /p CONDA_ENV_NAME=New env name [default transcript_py311]: 
 if not defined CONDA_ENV_NAME set "CONDA_ENV_NAME=transcript_py311"
-echo Creating conda env %CONDA_ENV_NAME% with Python 3.11...
+echo Creating %CONDA_ENV_NAME% with python=3.11...
 "%CONDA_CMD%" create -y -n "%CONDA_ENV_NAME%" python=3.11
 if errorlevel 1 (
-  echo Python 3.11 create failed. Trying Python 3.10...
+  echo 3.11 failed, trying 3.10...
   "%CONDA_CMD%" create -y -n "%CONDA_ENV_NAME%" python=3.10
   if errorlevel 1 (
-    echo ERROR: Could not create conda env.
+    echo ERROR: Could not create conda env with Python 3.11 or 3.10.
     goto fail
   )
 )
@@ -131,85 +146,82 @@ if errorlevel 1 (
 :conda_env_selected
 set "START_MODE=CONDA"
 set "PY_EXE="
-set "RUNTIME_PY_VER="
-"%CONDA_CMD%" run -n "%CONDA_ENV_NAME%" python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" > ".tmp_conda_pyver.txt"
-if errorlevel 1 echo ERROR: Could not read Python version from conda env.& goto fail
-set /p RUNTIME_PY_VER=<".tmp_conda_pyver.txt"
-del ".tmp_conda_pyver.txt" >nul 2>&1
+for /f "usebackq delims=" %%i in (`"%CONDA_CMD%" run -n "%CONDA_ENV_NAME%" python -c "import sys; print('%%d.%%d' %% (sys.version_info.major, sys.version_info.minor))"`) do set "RUNTIME_PY_VER=%%i"
 echo Conda env Python: %RUNTIME_PY_VER%
-echo [5/8] Upgrade pip in conda env...
+"%CONDA_CMD%" run -n "%CONDA_ENV_NAME%" python -c "import sys; raise SystemExit(0 if sys.version_info[:2] in ((3,10),(3,11)) else 1)" >nul 2>&1
+if errorlevel 1 (
+  echo ERROR: Conda env must be Python 3.10 or 3.11 ^(found %RUNTIME_PY_VER%^).
+  goto fail
+)
+echo [Conda] Upgrade pip...
 "%CONDA_CMD%" run -n "%CONDA_ENV_NAME%" python -m pip install --upgrade pip
 if errorlevel 1 echo ERROR: pip upgrade failed in conda env.& goto fail
 goto conda_install_requirements
 
 :install_requirements
-echo [5/8] Upgrade pip...
+echo.
+echo [Install] Upgrade pip...
 "%PY_EXE%" -m pip install --upgrade pip
 if errorlevel 1 echo ERROR: pip upgrade failed.& goto fail
 
-echo [6/8] Install requirements...
+echo [Install] Base packages...
 "%PY_EXE%" -m pip install customtkinter tkinterdnd2 openai-whisper torch deep-translator huggingface_hub
 if errorlevel 1 echo ERROR: base requirements install failed.& goto fail
-if /I "%USE_TTS%"=="Y" (
-  "%PY_EXE%" -m pip install TTS
-  if errorlevel 1 (
-    echo WARNING: Coqui TTS install failed.
-    set /p CONT_KEEP_TAB5=Continue and keep Tab 5 enabled? Y/n: 
-    if /I "%CONT_KEEP_TAB5%"=="N" set "USE_TTS=N"
-  )
-)
-if /I "%USE_TTS%"=="Y" (
-  echo Re-pin transformers for XTTS compatibility...
+
+echo [Install] Coqui TTS ^(XTTS v2^)...
+"%PY_EXE%" -m pip install TTS
+if errorlevel 1 (
+  echo WARNING: Coqui TTS install failed. Tab 5 may not work until you fix pip errors above.
+) else (
+  echo Re-pin transformers for XTTS...
   "%PY_EXE%" -m pip install "transformers==4.39.3"
-  echo Quick import test ^(Coqui TTS / XTTS^)...
+  echo Quick test: Coqui TTS import...
   "%PY_EXE%" -c "from TTS.api import TTS; print('OK: Coqui TTS import')"
 )
 goto save_config
 
 :conda_install_requirements
-echo [6/8] Install requirements...
+echo.
+echo [Install] Base packages in conda env...
 "%CONDA_CMD%" run -n "%CONDA_ENV_NAME%" python -m pip install customtkinter tkinterdnd2 openai-whisper torch deep-translator huggingface_hub
 if errorlevel 1 echo ERROR: base requirements install failed in conda env.& goto fail
-if /I "%USE_TTS%"=="Y" (
-  "%CONDA_CMD%" run -n "%CONDA_ENV_NAME%" python -m pip install TTS
-  if errorlevel 1 (
-    echo WARNING: Coqui TTS install failed in conda env.
-    set /p CONT_KEEP_TAB5=Continue and keep Tab 5 enabled? Y/n: 
-    if /I "%CONT_KEEP_TAB5%"=="N" set "USE_TTS=N"
-  )
-)
-if /I "%USE_TTS%"=="Y" (
-  echo Re-pin transformers for XTTS compatibility...
+
+echo [Install] Coqui TTS ^(XTTS v2^)...
+"%CONDA_CMD%" run -n "%CONDA_ENV_NAME%" python -m pip install TTS
+if errorlevel 1 (
+  echo WARNING: Coqui TTS install failed in conda env.
+) else (
+  echo Re-pin transformers for XTTS...
   "%CONDA_CMD%" run -n "%CONDA_ENV_NAME%" python -m pip install "transformers==4.39.3"
-  echo Quick import test ^(Coqui TTS / XTTS^)...
   "%CONDA_CMD%" run -n "%CONDA_ENV_NAME%" python -c "from TTS.api import TTS; print('OK: Coqui TTS import')"
 )
 
 :save_config
-echo [7/8] Save start config...
+echo.
+echo [Config] Writing .python_for_start_gui.txt and ui_settings.json...
 if /I "%START_MODE%"=="CONDA" (
   > ".python_for_start_gui.txt" echo conda:%CONDA_ENV_NAME%
 ) else (
   > ".python_for_start_gui.txt" echo %PY_EXE%
 )
 
-echo [8/8] Save app defaults...
 if /I "%START_MODE%"=="CONDA" (
-  py -3 -c "import json, os; p='ui_settings.json'; d=json.load(open(p,'r',encoding='utf-8')) if os.path.exists(p) else {}; d['tts_runtime_mode']='conda_env'; d['tts_conda_env']=r'%CONDA_ENV_NAME%'; d['tts_python_path']=''; d['tts_enabled']=('%USE_TTS%'=='Y'); d['tts_engine']='xtts_v2'; d.pop('openvoice_ckpt_dir', None); open(p,'w',encoding='utf-8').write(json.dumps(d, ensure_ascii=False, indent=2))"
+  py -3 -c "import json, os; p='ui_settings.json'; d=json.load(open(p,'r',encoding='utf-8')) if os.path.exists(p) else {}; d['tts_runtime_mode']='conda_env'; d['tts_conda_env']=r'%CONDA_ENV_NAME%'; d['tts_python_path']=''; d['tts_enabled']=True; d['tts_engine']='xtts_v2'; d.pop('openvoice_ckpt_dir', None); open(p,'w',encoding='utf-8').write(json.dumps(d, ensure_ascii=False, indent=2))"
 ) else (
-  "%PY_EXE%" -c "import json, os; p='ui_settings.json'; d=json.load(open(p,'r',encoding='utf-8')) if os.path.exists(p) else {}; d['tts_runtime_mode']='python_path'; d['tts_python_path']=r'%PY_EXE%'; d['tts_conda_env']=''; d['tts_enabled']=('%USE_TTS%'=='Y'); d['tts_engine']='xtts_v2'; d.pop('openvoice_ckpt_dir', None); open(p,'w',encoding='utf-8').write(json.dumps(d, ensure_ascii=False, indent=2))"
+  "%PY_EXE%" -c "import json, os; p='ui_settings.json'; d=json.load(open(p,'r',encoding='utf-8')) if os.path.exists(p) else {}; d['tts_runtime_mode']='python_path'; d['tts_python_path']=r'%PY_EXE%'; d['tts_conda_env']=''; d['tts_enabled']=True; d['tts_engine']='xtts_v2'; d.pop('openvoice_ckpt_dir', None); open(p,'w',encoding='utf-8').write(json.dumps(d, ensure_ascii=False, indent=2))"
 )
 
 echo.
-echo Install complete.
-echo TTS enabled: %USE_TTS%
+echo Install finished.
 if /I "%START_MODE%"=="CONDA" (
-  echo Conda env: %CONDA_ENV_NAME%
+  echo Runtime: conda env **%CONDA_ENV_NAME%** ^(Python %RUNTIME_PY_VER%^)
+) else if defined VENV_DIR (
+  echo Runtime: venv **%VENV_DIR%**
+  echo Python: %PY_EXE% ^(%RUNTIME_PY_VER%^)
 ) else (
-  echo Venv: %VENV_DIR%
-  echo Python: %PY_EXE%
+  echo Runtime: PATH interpreter **%PY_EXE%** ^(Python %RUNTIME_PY_VER%^)
 )
-echo Start with: start_gui.bat
+echo Start GUI: start_gui.bat
 goto end
 
 :fail

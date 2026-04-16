@@ -12,7 +12,8 @@ You do **not** need to be a Python developer, but you should be comfortable on *
 **Update** 
 Created a web installer, you need 5 GB of space
 Download the  web installer from the release https://github.com/PepegaSan/transcript_multi_tool_xtts/releases
-Let it download the files and start the software
+If you need an python anvireoment downlaod Miniconda or Anaconda and click on the bat files in the install folder to create an conda env
+Start the software
 
 1. Install **Python 3.11 or 3.10** from [python.org](https://www.python.org/downloads/windows/) and enable the **“py launcher”** (recommended). Alternatively use **Miniconda/Anaconda** and pick conda mode in the installer.
 2. Run **`install.bat`** and choose **venv (1)**, **conda (2)**, or **PATH python (3)** when prompted. The script writes **`.python_for_start_gui.txt`** (ignored by git) and creates or updates **`ui_settings.json`** (local-only; not committed—defaults work if the file is missing).

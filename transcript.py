@@ -1891,21 +1891,56 @@ class TranskriptionApp(DnD_CTk):
             pass
 
     def _resolve_conda_executable(self):
+        def _prefer_conda_bat(path: str) -> str:
+            """
+            On Windows, prefer condabin\\conda.bat over Scripts\\conda.exe for `conda run ...`
+            subprocess usage (more reliable than conda.exe in some installs).
+            """
+            p = (path or "").strip()
+            if not p:
+                return ""
+            low = p.lower()
+            if os.name == "nt":
+                # If PATH returned conda.bat, keep it.
+                if low.endswith("conda.bat"):
+                    return p
+                # If we got ...\\Scripts\\conda.exe, prefer sibling condabin\\conda.bat
+                if low.endswith("\\scripts\\conda.exe") or low.endswith("/scripts/conda.exe"):
+                    root = os.path.dirname(os.path.dirname(p))
+                    cand = os.path.join(root, "condabin", "conda.bat")
+                    if os.path.isfile(cand):
+                        return cand
+                # If we got ...\\conda.exe under a conda root, try condabin
+                if low.endswith("\\conda.exe") or low.endswith("/conda.exe"):
+                    root = os.path.dirname(p)
+                    cand = os.path.join(root, "condabin", "conda.bat")
+                    if os.path.isfile(cand):
+                        return cand
+            return p
+
         # 1) Environment variable from activated shells
         conda_exe = (os.environ.get("CONDA_EXE") or "").strip()
         if conda_exe and os.path.exists(conda_exe):
-            return conda_exe
+            preferred = _prefer_conda_bat(conda_exe)
+            if preferred:
+                return preferred
 
         # 2) PATH lookup
         path_conda = shutil.which("conda")
         if path_conda:
-            return path_conda
+            preferred = _prefer_conda_bat(path_conda)
+            if preferred:
+                return preferred
 
         # 3) Typical Windows installation locations
         home = os.path.expanduser("~")
         candidates = [
+            os.path.join(home, "miniconda3", "condabin", "conda.bat"),
+            os.path.join(home, "anaconda3", "condabin", "conda.bat"),
             os.path.join(home, "miniconda3", "Scripts", "conda.exe"),
             os.path.join(home, "anaconda3", "Scripts", "conda.exe"),
+            os.path.join(os.environ.get("ProgramData", r"C:\ProgramData"), "miniconda3", "condabin", "conda.bat"),
+            os.path.join(os.environ.get("ProgramData", r"C:\ProgramData"), "anaconda3", "condabin", "conda.bat"),
             os.path.join(os.environ.get("ProgramData", r"C:\ProgramData"), "miniconda3", "Scripts", "conda.exe"),
             os.path.join(os.environ.get("ProgramData", r"C:\ProgramData"), "anaconda3", "Scripts", "conda.exe"),
         ]
@@ -2630,7 +2665,13 @@ class TranskriptionApp(DnD_CTk):
             ]
             run = subprocess.run(cmd, capture_output=True, text=True, check=False)
             if run.returncode != 0:
-                raise Exception((run.stderr or run.stdout or "TTS check failed").strip()[-300:])
+                tail = 4000
+                err = (run.stderr or "").strip()
+                out = (run.stdout or "").strip()
+                msg = err or out or "TTS check failed"
+                if err and out and out not in err:
+                    msg = f"{err}\n\n--- stdout ---\n{out}"
+                raise Exception(msg[-tail:])
             lines = [ln for ln in (run.stdout or "").strip().splitlines() if ln.strip()]
             py = lines[0] if lines else "unknown"
             cuda_on = any(ln.strip().lower() == "cuda=1" for ln in lines)

@@ -9,6 +9,22 @@ import tempfile
 import shutil
 import sys
 import importlib.util
+
+
+def _app_base_dir() -> str:
+    """Writable folder: next to the .exe when frozen, else folder containing transcript.py."""
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(os.path.abspath(sys.executable))
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def _bundle_base_dir() -> str:
+    """Read-only bundle root: PyInstaller onefile extract dir, else script folder."""
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        return sys._MEIPASS
+    return os.path.dirname(os.path.abspath(__file__))
+
+
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 from tkinterdnd2 import TkinterDnD, DND_FILES
@@ -125,7 +141,7 @@ class TranskriptionApp(DnD_CTk):
         self.initial_state = None
         self.copy_block_cycle_index = 0
         self.auto_chunk_after_transcription = True
-        self.tts_profiles_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tts_profiles")
+        self.tts_profiles_root = os.path.join(_app_base_dir(), "tts_profiles")
         self.tts_profiles_index_path = os.path.join(self.tts_profiles_root, "profiles.json")
         self.tts_profiles = {}
         self.tts_selected_reference_path = ""
@@ -137,7 +153,7 @@ class TranskriptionApp(DnD_CTk):
         self.tts_active_process = None
         self.tts_hf_download_busy = False
         self._ffmpeg_exe_cached = None
-        self.ui_settings_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_settings.json")
+        self.ui_settings_path = os.path.join(_app_base_dir(), "ui_settings.json")
         self.ui_settings = self._load_ui_settings()
         saved_ui_lang = str(self.ui_settings.get("ui_language", "EN")).strip().upper()
         if saved_ui_lang not in {"EN", "DE"}:
@@ -1843,7 +1859,7 @@ class TranskriptionApp(DnD_CTk):
         p = os.path.expandvars(os.path.expanduser(p))
         if os.path.isabs(p):
             return os.path.normpath(os.path.abspath(p))
-        app_dir = os.path.dirname(os.path.abspath(__file__))
+        app_dir = _app_base_dir()
         cand = os.path.normpath(os.path.join(app_dir, p))
         if os.path.isfile(cand):
             return os.path.abspath(cand)
@@ -1902,6 +1918,15 @@ class TranskriptionApp(DnD_CTk):
     def _build_tts_python_command(self):
         mode = (self.tts_runtime_var.get() or "conda_env").strip().lower() if hasattr(self, "tts_runtime_var") else "conda_env"
         if mode == "current_python":
+            if getattr(sys, "frozen", False):
+                raise Exception(
+                    self._tr(
+                        "Frozen app (.exe): Tab 5 cannot use 'Current app Python'. Set Runtime to 'Python path' "
+                        "and pick a real python.exe with Coqui TTS, or use a Conda environment.",
+                        "Eingefrorene App (.exe): Tab 5 kann nicht „Aktuelles App-Python“ nutzen. Runtime auf "
+                        "„Python-Pfad“ stellen und echten python.exe mit Coqui TTS waehlen, oder Conda nutzen.",
+                    )
+                )
             return [sys.executable]
         if mode == "python_path":
             py_path = (self.tts_py_entry.get() or "").strip()
@@ -1933,7 +1958,7 @@ class TranskriptionApp(DnD_CTk):
                 except Exception:
                     pass
             if not os.path.isfile(py_path):
-                app_dir = os.path.dirname(os.path.abspath(__file__))
+                app_dir = _app_base_dir()
                 raise Exception(
                     self._tr(
                         f"TTS Python not found: {py_path}\n"
@@ -1964,7 +1989,7 @@ class TranskriptionApp(DnD_CTk):
         For TTS subprocess export we only use the python.exe form.
         """
         try:
-            hint_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".python_for_start_gui.txt")
+            hint_path = os.path.join(_app_base_dir(), ".python_for_start_gui.txt")
             if not os.path.isfile(hint_path):
                 return ""
             with open(hint_path, "r", encoding="utf-8", errors="ignore") as f:
@@ -2480,7 +2505,9 @@ class TranskriptionApp(DnD_CTk):
             filter_map = {
                 "voice_clean": "highpass=f=80,lowpass=f=8000,afftdn,loudnorm",
                 "speech_boost": "highpass=f=100,lowpass=f=7000,afftdn=nr=18,acompressor=threshold=-20dB:ratio=2:attack=20:release=250,loudnorm",
-                "music_heavy_cleanup": "highpass=f=120,lowpass=f=5000,afftdn=nr=24,agate=threshold=-28dB:range=12dB:attack=15:release=220,acompressor=threshold=-24dB:ratio=2.5:attack=15:release=220,loudnorm"
+                # Keep agate range in [0,1] for compatibility with more FFmpeg builds.
+                # This roughly corresponds zu einem moderaten Gate (ca. 10–12 dB Effekt).
+                "music_heavy_cleanup": "highpass=f=120,lowpass=f=5000,afftdn=nr=24,agate=threshold=-28dB:range=0.5:attack=15:release=220,acompressor=threshold=-24dB:ratio=2.5:attack=15:release=220,loudnorm"
             }
             filter_chain = filter_map.get(mode, filter_map["voice_clean"])
             cmd = [
@@ -2768,7 +2795,7 @@ class TranskriptionApp(DnD_CTk):
             with open(payload_path, "w", encoding="utf-8") as f:
                 json.dump(payload, f, ensure_ascii=False)
 
-            runner_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tts_subprocess_runner.py")
+            runner_path = os.path.join(_bundle_base_dir(), "tts_subprocess_runner.py")
             if not os.path.isfile(runner_path):
                 raise Exception(f"TTS runner missing: {runner_path}")
 
@@ -2784,11 +2811,23 @@ class TranskriptionApp(DnD_CTk):
                 log_out_fp = open(synth_log_out, "w", encoding="utf-8", newline="\n")
                 log_err_fp = open(synth_log_err, "w", encoding="utf-8", newline="\n")
                 try:
+                    creationflags = 0
+                    startupinfo = None
+                    # Only hide the console when running as frozen EXE (onedir/onefile).
+                    if os.name == "nt" and getattr(sys, "frozen", False):
+                        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+                        try:
+                            startupinfo = subprocess.STARTUPINFO()
+                            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                        except Exception:
+                            startupinfo = None
                     synth_run = subprocess.Popen(
                         cmd,
                         stdout=log_out_fp,
                         stderr=log_err_fp,
                         env=env,
+                        creationflags=creationflags,
+                        startupinfo=startupinfo,
                     )
                 except FileNotFoundError as e:
                     raise Exception(
@@ -3201,7 +3240,8 @@ class TranskriptionApp(DnD_CTk):
         filter_map = {
             "voice_clean": "highpass=f=80,lowpass=f=8000,afftdn,loudnorm",
             "speech_boost": "highpass=f=100,lowpass=f=7000,afftdn=nr=18,acompressor=threshold=-20dB:ratio=2:attack=20:release=250,loudnorm",
-            "music_heavy_cleanup": "highpass=f=120,lowpass=f=5000,afftdn=nr=24,agate=threshold=-28dB:range=12dB:attack=15:release=220,acompressor=threshold=-24dB:ratio=2.5:attack=15:release=220,loudnorm"
+            # Use normalized agate range to avoid out-of-range errors on some FFmpeg builds.
+            "music_heavy_cleanup": "highpass=f=120,lowpass=f=5000,afftdn=nr=24,agate=threshold=-28dB:range=0.5:attack=15:release=220,acompressor=threshold=-24dB:ratio=2.5:attack=15:release=220,loudnorm"
         }
         filter_chain = filter_map.get(mode, filter_map["voice_clean"])
         cmd = [
@@ -3421,7 +3461,7 @@ class TranskriptionApp(DnD_CTk):
         self.lbl_status.configure(text="All changes reset.", text_color="lightgreen")
 
     def _get_presets_file_path(self):
-        return os.path.join(os.path.dirname(os.path.abspath(__file__)), "filter_presets.json")
+        return os.path.join(_app_base_dir(), "filter_presets.json")
 
     def _load_ui_settings(self):
         if not os.path.exists(self.ui_settings_path):

@@ -147,7 +147,7 @@ class TranskriptionApp(DnD_CTk):
         self.tts_selected_reference_path = ""
         self.tts_multi_ref_paths = []
         self.tts_runtime_mode = "conda_env"
-        self.tts_conda_env_name = "autocut_env"
+        self.tts_conda_env_name = "xtts"
         self.tts_python_path = ""
         self.tts_cancel_requested = False
         self.tts_active_process = None
@@ -1968,7 +1968,11 @@ class TranskriptionApp(DnD_CTk):
                     )
                 )
             return [py_path]
-        env_name = (self.tts_env_entry.get() or "").strip() if hasattr(self, "tts_env_entry") else "autocut_env"
+        # conda_env mode
+        sidecar = self._resolve_sidecar_tts_python()
+        if sidecar:
+            return [sidecar]
+        env_name = (self.tts_env_entry.get() or "").strip() if hasattr(self, "tts_env_entry") else "xtts"
         if not env_name:
             raise Exception("Please provide a conda environment name.")
         conda_cmd = self._resolve_conda_executable()
@@ -1981,6 +1985,29 @@ class TranskriptionApp(DnD_CTk):
             )
         return [conda_cmd, "run", "-n", env_name, "python"]
 
+    def _resolve_sidecar_tts_python(self) -> str:
+        """
+        When frozen (onedir/onefile), allow a portable python.exe next to the app
+        without forcing the user to type it into Tab 5.
+
+        Checked locations (first hit wins):
+          - <app_dir>\\python.exe
+          - <app_dir>\\python\\python.exe
+          - <app_dir>\\python_portable\\python.exe
+        """
+        if not getattr(sys, "frozen", False):
+            return ""
+        base = _app_base_dir()
+        candidates = [
+            os.path.join(base, "python.exe"),
+            os.path.join(base, "python", "python.exe"),
+            os.path.join(base, "python_portable", "python.exe"),
+        ]
+        for c in candidates:
+            if os.path.isfile(c):
+                return c
+        return ""
+
     def _default_tts_python_path_from_installer_hint(self):
         """
         install.bat writes .python_for_start_gui.txt with either:
@@ -1989,6 +2016,9 @@ class TranskriptionApp(DnD_CTk):
         For TTS subprocess export we only use the python.exe form.
         """
         try:
+            sidecar = self._resolve_sidecar_tts_python()
+            if sidecar:
+                return sidecar
             hint_path = os.path.join(_app_base_dir(), ".python_for_start_gui.txt")
             if not os.path.isfile(hint_path):
                 return ""

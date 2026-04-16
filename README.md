@@ -8,9 +8,10 @@ You do **not** need to be a Python developer, but you should be comfortable on *
 
 ## Install (Windows)
 
+
 **Update** 
 Created a web installer, you need 5 GB of space
-Download the  web installer from the release
+Download the  web installer from the release https://github.com/PepegaSan/transcript_multi_tool_xtts/releases
 Let it download the files and start the software
 
 1. Install **Python 3.11 or 3.10** from [python.org](https://www.python.org/downloads/windows/) and enable the **“py launcher”** (recommended). Alternatively use **Miniconda/Anaconda** and pick conda mode in the installer.

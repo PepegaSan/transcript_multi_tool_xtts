@@ -64,12 +64,19 @@ if errorlevel 1 (
 
 echo.
 echo [INFO] Installing PyTorch CUDA wheels...
-call conda run -n "%ENV_NAME%" python -m pip install --upgrade torch torchvision torchaudio --index-url "%TORCH_INDEX%"
+call conda run -n "%ENV_NAME%" python -m pip install --upgrade --force-reinstall torch torchvision torchaudio --index-url "%TORCH_INDEX%"
 if errorlevel 1 (
   echo [ERROR] PyTorch CUDA install failed.
   echo.
   pause
   exit /b 1
+)
+
+echo.
+echo [INFO] Re-pinning numpy/networkx for Coqui TTS / gruut compatibility...
+call conda run -n "%ENV_NAME%" python -m pip install --upgrade "numpy>=1.22,<2" "networkx>=2.5,<3"
+if errorlevel 1 (
+  echo [WARNING] Could not pin numpy/networkx. If TTS fails at runtime, re-run setup_conda_env.bat.
 )
 
 echo.

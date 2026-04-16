@@ -4,6 +4,10 @@
 customtkinter
 tkinterdnd2
 openai-whisper
+# Coqui TTS pulls in `gruut`, which currently pins compatible ranges for these deps.
+# Without pins, a later `pip install torch` can upgrade numpy/networkx too far and break TTS at runtime.
+numpy>=1.22,<2
+networkx>=2.5,<3
 torch
 deep-translator
 TTS
